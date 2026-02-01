@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>cf-data-art-print-lab</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="./config.js"></script>
+  </head>
+  <body>
+    <main class="wrap">
+      <header class="header">
+        <h1>cf-data-art-print-lab</h1>
+        <p class="sub">
+          1時間ごとにサンプル更新 → 購入クリックで最新データからプレビュー生成 → OKなら決済（MVP）
+        </p>
+      </header>
+
+      <section class="card">
+        <h2>最新サンプル（Hourly sample）</h2>
+        <div class="row">
+          <div class="art">
+            <img id="sampleImg" alt="sample" />
+          </div>
+          <div class="meta">
+            <div id="sampleMeta" class="mono small"></div>
+            <button id="btnRefreshSample">再読み込み</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>購入フロー（MVP）</h2>
+        <div class="row">
+          <div class="art">
+            <img id="previewImg" alt="preview" />
+          </div>
+          <div class="meta">
+            <div id="previewMeta" class="mono small"></div>
+            <div class="buttons">
+              <button id="btnGeneratePreview">この瞬間の最新データでプレビュー生成</button>
+              <button id="btnCheckout" disabled>OK → 決済へ（Stripe）</button>
+            </div>
+            <p class="small dim">
+              ※ 決済はStripe設定が入っている場合のみ動きます。未設定なら501が返ります。
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <footer class="footer small dim">
+        <p>Repo: cf-data-art-print-lab / Cloudflare Pages + Workers + D1 + R2</p>
+      </footer>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

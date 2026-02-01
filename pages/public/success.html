@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Success</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="wrap">
+      <section class="card">
+        <h2>決済完了（テスト）</h2>
+        <p class="dim small">注文が確定しました（Webhookが正しく届いていれば orders.status が PAID になります）。</p>
+        <p class="mono small" id="info"></p>
+        <p><a href="./index.html">戻る</a></p>
+      </section>
+    </main>
+    <script>
+      const p = new URLSearchParams(location.search);
+      document.getElementById('info').textContent = 'session_id=' + (p.get('session_id') || '(none)');
+    </script>
+  </body>
+</html>

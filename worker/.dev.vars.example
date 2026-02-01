@@ -1,0 +1,14 @@
+# Copy to .dev.vars and fill values for local development.
+# Wrangler loads .dev.vars automatically.
+
+# Base URLs
+APP_BASE_URL=http://localhost:8788
+CORS_ALLOWED_ORIGINS=http://localhost:8788
+
+# Stripe (test mode)
+STRIPE_SECRET_KEY=sk_test_REPLACE_ME
+STRIPE_WEBHOOK_SECRET=whsec_REPLACE_ME
+
+# POD (optional; MVP is manual)
+POD_PROVIDER=manual
+POD_API_KEY=REPLACE_ME_OPTIONAL

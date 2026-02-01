@@ -1,0 +1,24 @@
+name = "cf-data-art-print-worker"
+main = "src/index.ts"
+compatibility_date = "2026-02-01"
+
+# Cron: every hour at minute 0 (UTC)
+[triggers]
+crons = ["0 * * * *"]
+
+# Non-secret vars (OK to commit; change per env)
+[vars]
+APP_BASE_URL = "http://localhost:8788"
+CORS_ALLOWED_ORIGINS = "http://localhost:8788"
+POD_PROVIDER = "manual"
+
+# D1 (replace database_id after creating)
+[[d1_databases]]
+binding = "DB"
+database_name = "cf_data_art_print_db"
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+
+# R2 (create bucket and set name)
+[[r2_buckets]]
+binding = "ART_BUCKET"
+bucket_name = "cf-data-art-print-artifacts"

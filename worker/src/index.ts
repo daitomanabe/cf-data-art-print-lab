@@ -1,0 +1,77 @@
+import { json, text, withCors } from "./util/http";
+import { ensureDbInitialized } from "./db/init";
+import { getLatestSample, createHourlySample } from "./routes/sample";
+import { createPreview } from "./routes/preview";
+import { createCheckoutSession } from "./routes/checkout";
+import { handleStripeWebhook } from "./routes/webhook_stripe";
+import { serveArtObject } from "./routes/art";
+
+export interface Env {
+  DB: D1Database;
+  ART_BUCKET: R2Bucket;
+
+  // non-secret vars
+  APP_BASE_URL: string;
+  CORS_ALLOWED_ORIGINS: string;
+  POD_PROVIDER: "manual" | "gelato" | "printful";
+
+  // secrets (wrangler secret put)
+  STRIPE_SECRET_KEY?: string;
+  STRIPE_WEBHOOK_SECRET?: string;
+  POD_API_KEY?: string;
+}
+
+function isOptions(req: Request) {
+  return req.method.toUpperCase() === "OPTIONS";
+}
+
+export default {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    const url = new URL(request.url);
+
+    // Ensure DB exists (migrations should do this, but local dev is messy)
+    await ensureDbInitialized(env.DB);
+
+    // Basic CORS (for Pages dev / different origins)
+    const cors = withCors(env.CORS_ALLOWED_ORIGINS);
+    if (isOptions(request)) return cors(new Response(null, { status: 204 }));
+
+    // Health
+    if (request.method === "GET" && url.pathname === "/api/health") {
+      return cors(json({ ok: true, now: new Date().toISOString() }));
+    }
+
+    // Sample
+    if (request.method === "GET" && url.pathname === "/api/sample/latest") {
+      return cors(await getLatestSample(env));
+    }
+
+    // Preview
+    if (request.method === "POST" && url.pathname === "/api/preview") {
+      return cors(await createPreview(request, env));
+    }
+
+    // Checkout (Stripe)
+    if (request.method === "POST" && url.pathname === "/api/checkout") {
+      return cors(await createCheckoutSession(request, env));
+    }
+
+    // Stripe Webhook (no CORS needed)
+    if (request.method === "POST" && url.pathname === "/api/webhook/stripe") {
+      return await handleStripeWebhook(request, env);
+    }
+
+    // Serve artwork objects from R2 through Worker
+    if (request.method === "GET" && url.pathname.startsWith("/art/")) {
+      return cors(await serveArtObject(request, env));
+    }
+
+    return cors(text("Not Found", 404));
+  },
+
+  async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
+    // Hourly sample generation (UTC).
+    // Keep it idempotent by using hour-based source_key.
+    ctx.waitUntil(createHourlySample(env));
+  },
+};
