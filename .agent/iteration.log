@@ -2,3 +2,7 @@
 # Format: [{ISO8601}] iteration #{n} | {Hat} | {status} | {summary}
 
 [2026-02-01T12:32:32Z] iteration #1 | Ralph | starting | Received task.start, delegating to Git Setup
+[$(date -u +"%Y-%m-%dT%H:%M:%SZ")] Ralph: Received work.start event
+- Published work.start → Git Setup hat
+- Next: Git Setup will verify git/gh auth and publish git.ready or LOOP_COMPLETE
+[$(date -u +"%Y-%m-%dT%H:%M:%SZ")] iteration #2 | Git Setup | success | gh auth verified, git remote configured, ready to push
