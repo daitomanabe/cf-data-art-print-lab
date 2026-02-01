@@ -1,15 +1,13 @@
-# Task: CF Data Art Print Lab MVP実装
+# Task: CF Data Art Print Lab - Refinement & Phase 4
 
 ## Overview
 
-Cloudflare Workers + Pages + D1 + R2 で動く「データ→アート→購入」のMVPを実装する。
+Phase 1-3 (MVP) は実装済み。このイテレーションでは以下を行う:
 
-Phase 0（リポジトリ骨格）は完了済み。Phase 1〜3を実装してエンドツーエンドを動かす。
-
-### Goals
-- Phase 1: 1時間ごとのサンプル生成
-- Phase 2: 購入クリック→プレビュー生成
-- Phase 3: Stripe Checkout（テストモード）
+1. **コード品質向上**: エラーハンドリング、バリデーション、型安全性
+2. **UI/UX改善**: ローディング状態、エラー表示、アクセシビリティ
+3. **Phase 4実装**: 管理機能（注文一覧、マスターダウンロード）
+4. **ドキュメント更新**: ロードマップ反映、API説明追加
 
 ### Repository
 - **GitHub**: https://github.com/daitomanabe/cf-data-art-print-lab
@@ -36,70 +34,72 @@ Phase 0（リポジトリ骨格）は完了済み。Phase 1〜3を実装して�
 
 ---
 
-## LOOP_COMPLETE時の追加処理
-
-LOOP_COMPLETEを発行する前に:
-1. `COMPLETION_REPORT.md` を生成
-2. 最終 git push
-
----
-
 ## Hat Roles
 
 ### Git Setup
-- GitHub認証確認、リモート同期
-- 失敗時は即終了
-- 完了後: ログ記録 → git push → git.ready
+- リモート同期確認
+- 完了後: git.ready
 
-### Architect
-- docs/TECHNICAL_DESIGN.md を精読
-- Phase 1-3 の詳細仕様を specs/ に作成
-- Worker/Pages で分担できるよう整理
-- 完了後: ログ記録 → git push → specs.ready.worker, specs.ready.pages
+### Code Analyst
+- 現状のコード品質分析
+- 改善計画を specs/refinement-plan.md に記載
+- 完了後: analysis.ready.worker, analysis.ready.pages, analysis.ready.admin
 
-### Worker Developer
-- worker/ 配下の実装
-- Phase 1: Cron + サンプル生成
-- Phase 2: POST /api/preview
-- Phase 3: Stripe Checkout + Webhook
-- 完了後: ログ記録 → git push → worker.done
+### Worker Refiner
+- エラーハンドリング強化
+- 入力バリデーション追加
+- ログ出力追加
+- 完了後: worker.refined
 
-### Pages Developer
-- pages/public/ 配下の実装
-- Phase 1: 最新サンプル表示
-- Phase 2: プレビュー表示
-- Phase 3: 購入フロー
-- 完了後: ログ記録 → git push → pages.done
+### Pages Refiner
+- ローディング状態追加
+- エラー表示改善
+- UX向上
+- 完了後: pages.refined
+
+### Admin Builder
+- Phase 4: 管理機能実装
+  - GET /api/admin/orders (注文一覧)
+  - GET /art/masters/:id (マスターDL)
+  - pages/public/admin.html (管理画面)
+- 完了後: admin.done
+
+### Documentation Updater
+- IMPLEMENTATION_ROADMAP.md 更新
+- README.md に管理機能説明追加
+- 完了後: docs.updated
 
 ### Integrator
-- Worker + Pages 統合確認
-- 各Phaseの完了条件チェック
-- 問題あり → review.{worker,pages}.changes
-- 全完了 → COMPLETION_REPORT.md生成 → LOOP_COMPLETE
+- 統合確認、ビルドテスト
+- 問題あり → review.{worker,pages,admin}.changes
+- 全完了 → COMPLETION_REPORT.md → LOOP_COMPLETE
 
 ---
 
 ## Success Criteria
 
-### Phase 1
-- [ ] Cron Triggerで `scheduled()` が動く
-- [ ] mockデータでSVG生成
-- [ ] R2保存 + D1 pointers更新
-- [ ] Pagesで最新サンプルが表示される
+### コード品質
+- [ ] TypeScript ビルドエラーなし
+- [ ] 全APIでエラーハンドリング実装
+- [ ] リクエストバリデーション実装
 
-### Phase 2
-- [ ] `POST /api/preview` 実装
-- [ ] Snapshot保存（再現性）
-- [ ] プレビュー表示（フロント）
+### UI/UX
+- [ ] ローディングスピナー表示
+- [ ] エラー時のユーザーフィードバック
+- [ ] ボタンのdisabled状態管理
 
-### Phase 3
-- [ ] `POST /api/checkout` 実装（Checkout Session作成）
-- [ ] `POST /api/webhook/stripe` 実装（署名検証）
-- [ ] orders のステータス遷移 `DRAFT -> PAID`
+### Phase 4 (管理機能)
+- [ ] 注文一覧API実装
+- [ ] マスターダウンロード実装
+- [ ] 簡易管理画面実装
+
+### ドキュメント
+- [ ] Phase 1-3 完了済みに更新
+- [ ] 新API説明追加
+- [ ] 環境変数説明追加
 
 ### 最終
 - [ ] 全変更がremoteにpush済み
-- [ ] .agent/iteration.log が最新
 - [ ] COMPLETION_REPORT.md が生成済み
 - [ ] LOOP_COMPLETE
 
@@ -111,21 +111,34 @@ LOOP_COMPLETEを発行する前に:
 ```bash
 cd worker
 npm i
-cp .dev.vars.example .dev.vars
-npm run db:migrate:local
 npm run dev
 # http://localhost:8787
 ```
 
-### Pages ローカル起動
-```bash
-cd pages
-cp public/config.example.js public/config.js
-npx serve public -l 8788
-# http://localhost:8788
-```
+### 新規追加予定のエンドポイント
+- `GET /api/admin/orders` - 注文一覧 (要認証)
+- `GET /art/masters/:id` - マスターファイル (要認証)
 
-### 参照ドキュメント
-- `docs/TECHNICAL_DESIGN.md` - API仕様、DB設計
-- `docs/IMPLEMENTATION_ROADMAP.md` - フェーズ定義
-- `worker/README.md` - Worker固有の情報
+### 認証方式 (Phase 4)
+簡易Bearer token認証:
+- 環境変数 `ADMIN_TOKEN` を設定
+- Header: `Authorization: Bearer {ADMIN_TOKEN}`
+
+---
+
+## Files to Modify
+
+### Worker
+- `worker/src/index.ts` - ルーティング追加
+- `worker/src/routes/*.ts` - エラーハンドリング強化
+- `worker/src/routes/admin.ts` - 新規: 管理API
+- `worker/src/util/auth.ts` - 新規: 認証ヘルパー
+
+### Pages
+- `pages/public/app.js` - ローディング/エラー処理
+- `pages/public/styles.css` - スピナーCSS
+- `pages/public/admin.html` - 新規: 管理画面
+
+### Docs
+- `docs/IMPLEMENTATION_ROADMAP.md` - Phase完了状況更新
+- `README.md` - 管理機能説明追加
