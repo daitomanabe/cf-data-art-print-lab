@@ -1,1 +1,3 @@
-{"id":"task-1769949513-613e","title":"Create Phase 1-3 detailed specs in specs/ directory","status":"open","priority":1,"blocked_by":[],"created":"2026-02-01T12:38:33.614722+00:00"}
+{"id":"task-1769949513-613e","title":"Create Phase 1-3 detailed specs in specs/ directory","status":"closed","priority":1,"blocked_by":[],"created":"2026-02-01T12:38:33.614722+00:00","closed":"2026-02-01T12:41:01.351276+00:00"}
+{"id":"task-1769949666-5533","title":"Worker: Implement Phase 1-3 (Cron, APIs, D1/R2)","status":"closed","priority":1,"blocked_by":[],"created":"2026-02-01T12:41:06.480567+00:00","closed":"2026-02-01T12:45:00.787956+00:00"}
+{"id":"task-1769949667-bccd","title":"Pages: Implement Phase 1-3 (UI for sample/preview/checkout)","status":"closed","priority":2,"blocked_by":["Worker: Implement Phase 1-3 (Cron","APIs","D1/R2)"],"created":"2026-02-01T12:41:07.572626+00:00","closed":"2026-02-01T12:53:04.312751+00:00"}
