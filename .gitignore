@@ -17,3 +17,6 @@ pnpm-debug.log*
 # OS
 .DS_Store
 Thumbs.db
+
+# Ralph agent (keep iteration.log and scratchpad for tracking)
+# .agent/
