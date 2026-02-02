@@ -1,14 +1,58 @@
-# Copy to .dev.vars and fill values for local development.
-# Wrangler loads .dev.vars automatically.
+# ============================================================
+# CF Data Art Print Lab - 環境変数設定
+# ============================================================
+# このファイルを .dev.vars にコピーして値を設定してください
+# cp .dev.vars.example .dev.vars
+#
+# Wrangler は .dev.vars を自動的に読み込みます
+# ============================================================
 
-# Base URLs
+# ------------------------------------------------------------
+# 1. Base URLs（ローカル開発用）
+# ------------------------------------------------------------
+# フロントエンド（Pages）のURL
 APP_BASE_URL=http://localhost:8788
+
+# CORS許可オリジン（カンマ区切りで複数指定可）
 CORS_ALLOWED_ORIGINS=http://localhost:8788
 
-# Stripe (test mode)
-STRIPE_SECRET_KEY=sk_test_REPLACE_ME
-STRIPE_WEBHOOK_SECRET=whsec_REPLACE_ME
+# ------------------------------------------------------------
+# 2. Stripe（決済 - 必須）
+# ------------------------------------------------------------
+# 取得方法:
+#   1. https://dashboard.stripe.com/register でアカウント作成
+#   2. 「テストモード」をONにする（本番前は必ずテストモード）
+#   3. Developers → API keys → Secret key をコピー
+#
+# Secret Key（sk_test_xxx または sk_live_xxx）
+STRIPE_SECRET_KEY=sk_test_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
-# POD (optional; MVP is manual)
+# Webhook Signing Secret
+# 取得方法:
+#   1. Developers → Webhooks → 「Add endpoint」
+#   2. Endpoint URL: https://your-worker.workers.dev/api/webhook/stripe
+#   3. Events: checkout.session.completed を選択
+#   4. 作成後「Signing secret」をコピー
+STRIPE_WEBHOOK_SECRET=whsec_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+# ------------------------------------------------------------
+# 3. POD（プリントオンデマンド - Phase 5でオプション）
+# ------------------------------------------------------------
+# 現状は "manual"（手動発注）で運用
+# Phase 5 で "gelato" または "printful" に変更
 POD_PROVIDER=manual
-POD_API_KEY=REPLACE_ME_OPTIONAL
+
+# Gelato API Key（POD_PROVIDER=gelato の場合）
+# 取得: https://dashboard.gelato.com/ → Settings → API
+# POD_API_KEY=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+
+# Printful API Key（POD_PROVIDER=printful の場合）
+# 取得: https://www.printful.com/dashboard/settings/api
+# POD_API_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+# ------------------------------------------------------------
+# 4. 管理機能（Phase 4 - オプション）
+# ------------------------------------------------------------
+# 管理APIの認証トークン（任意の文字列）
+# 未設定の場合、管理APIは無効
+# ADMIN_TOKEN=your-secure-random-token-here
