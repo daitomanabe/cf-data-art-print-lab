@@ -24,16 +24,16 @@ CORS_ALLOWED_ORIGINS=http://localhost:8788
 #   2. 「テストモード」をONにする（本番前は必ずテストモード）
 #   3. Developers → API keys → Secret key をコピー
 #
-# Secret Key（sk_test_xxx または sk_live_xxx）
-STRIPE_SECRET_KEY=sk_test_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+# Secret Key（sk_test_... または sk_live_... 形式）
+STRIPE_SECRET_KEY=<YOUR_STRIPE_SECRET_KEY>
 
 # Webhook Signing Secret
 # 取得方法:
 #   1. Developers → Webhooks → 「Add endpoint」
 #   2. Endpoint URL: https://your-worker.workers.dev/api/webhook/stripe
 #   3. Events: checkout.session.completed を選択
-#   4. 作成後「Signing secret」をコピー
-STRIPE_WEBHOOK_SECRET=whsec_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+#   4. 作成後「Signing secret」をコピー（whsec_... 形式）
+STRIPE_WEBHOOK_SECRET=<YOUR_STRIPE_WEBHOOK_SECRET>
 
 # ------------------------------------------------------------
 # 3. POD（プリントオンデマンド - Phase 5でオプション）
@@ -50,7 +50,7 @@ POD_PROVIDER=manual
 #   2. ダッシュボード → 設定 → API
 #   3. 「APIキーを作成」をクリック
 #
-# POD_API_KEY=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+# POD_API_KEY=<YOUR_GELATO_API_KEY>
 #
 # 商品UID例（額装ポスター）:
 #   - framed_poster_wood_black_A3_297x420_mm
@@ -63,7 +63,7 @@ POD_PROVIDER=manual
 #   2. Settings → API → Create new token
 #   3. スコープ: orders:read, orders:write を選択
 #
-# POD_API_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+# POD_API_KEY=<YOUR_PRINTFUL_API_KEY>
 #
 # 注意: Printfulは variant_id（数値）で商品を指定
 # 実際のIDはAPI（/products）で確認が必要
@@ -73,4 +73,4 @@ POD_PROVIDER=manual
 # ------------------------------------------------------------
 # 管理APIの認証トークン（任意の文字列）
 # 未設定の場合、管理APIは無効
-# ADMIN_TOKEN=your-secure-random-token-here
+# ADMIN_TOKEN=<YOUR_ADMIN_TOKEN>
