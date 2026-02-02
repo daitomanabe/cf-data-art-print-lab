@@ -5,6 +5,7 @@ import { createPreview } from "./routes/preview";
 import { createCheckoutSession } from "./routes/checkout";
 import { handleStripeWebhook } from "./routes/webhook_stripe";
 import { serveArtObject } from "./routes/art";
+import { listOrders, getOrder, updateOrder, getStats } from "./routes/admin";
 
 export interface Env {
   DB: D1Database;
@@ -19,6 +20,7 @@ export interface Env {
   STRIPE_SECRET_KEY?: string;
   STRIPE_WEBHOOK_SECRET?: string;
   POD_API_KEY?: string;
+  ADMIN_TOKEN?: string;
 }
 
 function isOptions(req: Request) {
@@ -60,6 +62,36 @@ export default {
     if (request.method === "POST" && url.pathname === "/api/webhook/stripe") {
       return await handleStripeWebhook(request, env);
     }
+
+    // =========================================
+    // Admin API (requires ADMIN_TOKEN)
+    // =========================================
+
+    // Admin: Order stats
+    if (request.method === "GET" && url.pathname === "/api/admin/stats") {
+      return cors(await getStats(request, env));
+    }
+
+    // Admin: List orders
+    if (request.method === "GET" && url.pathname === "/api/admin/orders") {
+      return cors(await listOrders(request, env));
+    }
+
+    // Admin: Get/Update single order
+    const orderMatch = url.pathname.match(/^\/api\/admin\/orders\/([a-zA-Z0-9-]+)$/);
+    if (orderMatch) {
+      const orderId = orderMatch[1];
+      if (request.method === "GET") {
+        return cors(await getOrder(request, env, orderId));
+      }
+      if (request.method === "PATCH") {
+        return cors(await updateOrder(request, env, orderId));
+      }
+    }
+
+    // =========================================
+    // Art serving (R2)
+    // =========================================
 
     // Serve artwork objects from R2 through Worker
     if (request.method === "GET" && url.pathname.startsWith("/art/")) {

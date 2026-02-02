@@ -69,8 +69,14 @@ POD_PROVIDER=manual
 # 実際のIDはAPI（/products）で確認が必要
 
 # ------------------------------------------------------------
-# 4. 管理機能（Phase 4 - オプション）
+# 4. 管理機能（Phase 4）
 # ------------------------------------------------------------
-# 管理APIの認証トークン（任意の文字列）
-# 未設定の場合、管理APIは無効
-# ADMIN_TOKEN=<YOUR_ADMIN_TOKEN>
+# 管理APIの認証トークン
+# 未設定の場合、管理APIは無効（503エラー）
+#
+# 生成方法（例）:
+#   openssl rand -hex 32
+#   または任意の推測困難な文字列
+#
+# 管理画面: https://your-pages.pages.dev/admin.html
+ADMIN_TOKEN=<YOUR_ADMIN_TOKEN>

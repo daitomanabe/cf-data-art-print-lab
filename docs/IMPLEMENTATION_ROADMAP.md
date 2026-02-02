@@ -51,14 +51,17 @@
 
 ---
 
-## Phase 4: 手動フルフィルメント（"自動に見える手動"）🚧 Next
+## Phase 4: 手動フルフィルメント（"自動に見える手動"）✅ Done
 
-- [ ] 管理者用に「注文一覧」を見る方法を用意
+- [x] 管理者用に「注文一覧」を見る方法を用意
   - `GET /api/admin/orders` 実装
+  - `GET /api/admin/orders/:id` 実装
+  - `PATCH /api/admin/orders/:id` 実装
+  - `GET /api/admin/stats` 実装
   - 簡易認証（Bearer token）
-- [ ] 作品マスターのダウンロード（`/art/masters/:id`）
-- [ ] 簡易管理画面 `pages/public/admin.html`
-- [ ] PODに手動発注する運用手順をdocs化
+- [x] 作品ダウンロード（管理画面から `/art/:key` へリンク）
+- [x] 簡易管理画面 `pages/public/admin.html`
+- [x] PODに手動発注する運用手順をdocs化（`docs/MANUAL_FULFILLMENT.md`）
 
 **完了条件**
 - 受注→手動発注→発送までを1回通せる

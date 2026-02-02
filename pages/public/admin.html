@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Admin - CF Data Art Print Lab</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    /* Admin-specific styles */
+    .login-form {
+      max-width: 400px;
+      margin: 60px auto;
+    }
+
+    .login-form input {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 12px;
+      background: var(--bg);
+      border: 1px solid var(--stroke);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+
+    .login-form input:focus {
+      outline: none;
+      border-color: rgba(122, 252, 255, 0.55);
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .stat-card {
+      background: var(--card);
+      border: 1px solid var(--stroke);
+      border-radius: 8px;
+      padding: 16px;
+      text-align: center;
+    }
+
+    .stat-card .number {
+      font-size: 28px;
+      font-weight: bold;
+      color: var(--text);
+    }
+
+    .stat-card .label {
+      font-size: 12px;
+      color: var(--dim);
+      margin-top: 4px;
+    }
+
+    .filters {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .filters select {
+      padding: 8px 12px;
+      background: var(--card);
+      border: 1px solid var(--stroke);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 14px;
+    }
+
+    .orders-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .orders-table th,
+    .orders-table td {
+      padding: 12px 8px;
+      text-align: left;
+      border-bottom: 1px solid var(--stroke);
+    }
+
+    .orders-table th {
+      color: var(--dim);
+      font-weight: normal;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .orders-table tr:hover {
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 500;
+      text-transform: uppercase;
+    }
+
+    .status-DRAFT { background: rgba(156, 163, 175, 0.2); color: #9ca3af; }
+    .status-PAID { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+    .status-SUBMITTED { background: rgba(251, 191, 36, 0.2); color: #fbbf24; }
+    .status-SHIPPED { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
+    .status-CANCELED { background: rgba(107, 114, 128, 0.2); color: #6b7280; }
+    .status-FAILED { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+
+    .btn-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-small {
+      padding: 6px 10px;
+      font-size: 12px;
+    }
+
+    .btn-primary {
+      background: rgba(59, 130, 246, 0.2);
+      border-color: rgba(59, 130, 246, 0.5);
+    }
+
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal {
+      background: var(--card);
+      border: 1px solid var(--stroke);
+      border-radius: 12px;
+      padding: 24px;
+      max-width: 500px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+
+    .modal h3 {
+      margin: 0 0 16px;
+      font-size: 18px;
+    }
+
+    .modal-close {
+      float: right;
+      background: none;
+      border: none;
+      color: var(--dim);
+      cursor: pointer;
+      font-size: 20px;
+      padding: 0;
+    }
+
+    .detail-row {
+      display: flex;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--stroke);
+    }
+
+    .detail-row:last-child {
+      border-bottom: none;
+    }
+
+    .detail-label {
+      width: 120px;
+      color: var(--dim);
+      font-size: 12px;
+    }
+
+    .detail-value {
+      flex: 1;
+      font-size: 13px;
+    }
+
+    .hidden { display: none !important; }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: var(--dim);
+    }
+
+    .error-msg {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #ef4444;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+    }
+
+    .success-msg {
+      background: rgba(34, 197, 94, 0.1);
+      border: 1px solid rgba(34, 197, 94, 0.3);
+      color: #22c55e;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+    }
+
+    .pagination {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 16px;
+      font-size: 13px;
+      color: var(--dim);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px;
+      color: var(--dim);
+    }
+
+    .artwork-preview {
+      max-width: 100%;
+      max-height: 200px;
+      border-radius: 8px;
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <h1>Admin Panel</h1>
+      <p class="sub">注文管理・手動フルフィルメント</p>
+    </div>
+
+    <!-- Login Form -->
+    <div id="loginSection" class="card login-form">
+      <h2>認証</h2>
+      <div id="loginError" class="error-msg hidden"></div>
+      <input type="password" id="tokenInput" placeholder="Admin Token を入力">
+      <button id="loginBtn" style="width: 100%;">ログイン</button>
+    </div>
+
+    <!-- Admin Content (hidden until authenticated) -->
+    <div id="adminContent" class="hidden">
+      <!-- Stats -->
+      <div id="statsSection" class="stats-grid">
+        <div class="stat-card">
+          <div class="number" id="statTotal">-</div>
+          <div class="label">Total</div>
+        </div>
+        <div class="stat-card">
+          <div class="number" id="statPaid">-</div>
+          <div class="label">PAID</div>
+        </div>
+        <div class="stat-card">
+          <div class="number" id="statSubmitted">-</div>
+          <div class="label">SUBMITTED</div>
+        </div>
+        <div class="stat-card">
+          <div class="number" id="statShipped">-</div>
+          <div class="label">SHIPPED</div>
+        </div>
+      </div>
+
+      <!-- Orders List -->
+      <div class="card">
+        <h2>注文一覧</h2>
+
+        <div class="filters">
+          <select id="statusFilter">
+            <option value="">All Status</option>
+            <option value="DRAFT">DRAFT</option>
+            <option value="PAID">PAID</option>
+            <option value="SUBMITTED">SUBMITTED</option>
+            <option value="SHIPPED">SHIPPED</option>
+            <option value="CANCELED">CANCELED</option>
+            <option value="FAILED">FAILED</option>
+          </select>
+          <button id="refreshBtn" class="btn-small">更新</button>
+          <button id="logoutBtn" class="btn-small">ログアウト</button>
+        </div>
+
+        <div id="ordersLoading" class="loading">Loading...</div>
+        <div id="ordersError" class="error-msg hidden"></div>
+        <div id="ordersEmpty" class="empty-state hidden">注文がありません</div>
+
+        <table class="orders-table" id="ordersTable">
+          <thead>
+            <tr>
+              <th>Order ID</th>
+              <th>Status</th>
+              <th>Email</th>
+              <th>Created</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="ordersBody"></tbody>
+        </table>
+
+        <div class="pagination">
+          <span id="paginationInfo">-</span>
+          <div class="btn-row">
+            <button id="prevBtn" class="btn-small" disabled>前へ</button>
+            <button id="nextBtn" class="btn-small" disabled>次へ</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Order Detail Modal -->
+  <div id="orderModal" class="modal-overlay hidden">
+    <div class="modal">
+      <button class="modal-close" id="closeModal">&times;</button>
+      <h3>注文詳細</h3>
+      <div id="modalContent"></div>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script>
+    const API_BASE = window.__APP_CONFIG__?.workerBaseUrl || '';
+    let adminToken = '';
+    let currentOffset = 0;
+    const LIMIT = 20;
+
+    // DOM Elements
+    const loginSection = document.getElementById('loginSection');
+    const adminContent = document.getElementById('adminContent');
+    const tokenInput = document.getElementById('tokenInput');
+    const loginBtn = document.getElementById('loginBtn');
+    const loginError = document.getElementById('loginError');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const statusFilter = document.getElementById('statusFilter');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const ordersBody = document.getElementById('ordersBody');
+    const ordersLoading = document.getElementById('ordersLoading');
+    const ordersError = document.getElementById('ordersError');
+    const ordersEmpty = document.getElementById('ordersEmpty');
+    const ordersTable = document.getElementById('ordersTable');
+    const paginationInfo = document.getElementById('paginationInfo');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const orderModal = document.getElementById('orderModal');
+    const modalContent = document.getElementById('modalContent');
+    const closeModal = document.getElementById('closeModal');
+
+    // Check stored token
+    const storedToken = sessionStorage.getItem('adminToken');
+    if (storedToken) {
+      adminToken = storedToken;
+      showAdmin();
+    }
+
+    // Login
+    loginBtn.addEventListener('click', async () => {
+      const token = tokenInput.value.trim();
+      if (!token) {
+        showError(loginError, 'Token を入力してください');
+        return;
+      }
+
+      loginBtn.disabled = true;
+      loginBtn.textContent = 'Loading...';
+
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/stats`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (res.ok) {
+          adminToken = token;
+          sessionStorage.setItem('adminToken', token);
+          showAdmin();
+        } else {
+          const data = await res.json();
+          showError(loginError, data.message || 'Invalid token');
+        }
+      } catch (err) {
+        showError(loginError, 'Connection error');
+      } finally {
+        loginBtn.disabled = false;
+        loginBtn.textContent = 'ログイン';
+      }
+    });
+
+    tokenInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') loginBtn.click();
+    });
+
+    // Logout
+    logoutBtn.addEventListener('click', () => {
+      adminToken = '';
+      sessionStorage.removeItem('adminToken');
+      loginSection.classList.remove('hidden');
+      adminContent.classList.add('hidden');
+      tokenInput.value = '';
+    });
+
+    // Show admin content
+    async function showAdmin() {
+      loginSection.classList.add('hidden');
+      adminContent.classList.remove('hidden');
+      await Promise.all([loadStats(), loadOrders()]);
+    }
+
+    // Load stats
+    async function loadStats() {
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/stats`, {
+          headers: { 'Authorization': `Bearer ${adminToken}` }
+        });
+        const data = await res.json();
+
+        if (data.ok) {
+          document.getElementById('statTotal').textContent = data.stats.total;
+          document.getElementById('statPaid').textContent = data.stats.byStatus?.PAID || 0;
+          document.getElementById('statSubmitted').textContent = data.stats.byStatus?.SUBMITTED || 0;
+          document.getElementById('statShipped').textContent = data.stats.byStatus?.SHIPPED || 0;
+        }
+      } catch (err) {
+        console.error('Failed to load stats:', err);
+      }
+    }
+
+    // Load orders
+    async function loadOrders() {
+      ordersLoading.classList.remove('hidden');
+      ordersError.classList.add('hidden');
+      ordersEmpty.classList.add('hidden');
+      ordersTable.classList.add('hidden');
+
+      try {
+        const status = statusFilter.value;
+        let url = `${API_BASE}/api/admin/orders?limit=${LIMIT}&offset=${currentOffset}`;
+        if (status) url += `&status=${status}`;
+
+        const res = await fetch(url, {
+          headers: { 'Authorization': `Bearer ${adminToken}` }
+        });
+        const data = await res.json();
+
+        ordersLoading.classList.add('hidden');
+
+        if (!data.ok) {
+          showError(ordersError, data.message || 'Failed to load orders');
+          return;
+        }
+
+        if (data.orders.length === 0) {
+          ordersEmpty.classList.remove('hidden');
+          paginationInfo.textContent = '0 件';
+          prevBtn.disabled = true;
+          nextBtn.disabled = true;
+          return;
+        }
+
+        ordersTable.classList.remove('hidden');
+        renderOrders(data.orders);
+
+        // Pagination
+        const { total, limit, offset } = data.pagination;
+        const start = offset + 1;
+        const end = Math.min(offset + data.orders.length, total);
+        paginationInfo.textContent = `${start}-${end} / ${total} 件`;
+        prevBtn.disabled = offset === 0;
+        nextBtn.disabled = offset + limit >= total;
+
+      } catch (err) {
+        ordersLoading.classList.add('hidden');
+        showError(ordersError, 'Connection error');
+      }
+    }
+
+    // Render orders table
+    function renderOrders(orders) {
+      ordersBody.innerHTML = orders.map(order => `
+        <tr>
+          <td class="mono small">${order.id.slice(0, 8)}...</td>
+          <td><span class="status-badge status-${order.status}">${order.status}</span></td>
+          <td>${order.customer_email || '-'}</td>
+          <td class="small dim">${formatDate(order.created_at)}</td>
+          <td class="btn-row">
+            <button class="btn-small" onclick="viewOrder('${order.id}')">詳細</button>
+            ${order.status === 'PAID' ? `<button class="btn-small btn-primary" onclick="markSubmitted('${order.id}')">発注済</button>` : ''}
+            ${order.status === 'SUBMITTED' ? `<button class="btn-small btn-primary" onclick="markShipped('${order.id}')">発送済</button>` : ''}
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    // View order detail
+    async function viewOrder(orderId) {
+      orderModal.classList.remove('hidden');
+      modalContent.innerHTML = '<div class="loading">Loading...</div>';
+
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/orders/${orderId}`, {
+          headers: { 'Authorization': `Bearer ${adminToken}` }
+        });
+        const data = await res.json();
+
+        if (!data.ok) {
+          modalContent.innerHTML = `<div class="error-msg">${data.message}</div>`;
+          return;
+        }
+
+        const { order, artwork, artworkUrl } = data;
+        const shipping = order.shipping || {};
+
+        modalContent.innerHTML = `
+          <div class="detail-row">
+            <div class="detail-label">Order ID</div>
+            <div class="detail-value mono">${order.id}</div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-label">Status</div>
+            <div class="detail-value"><span class="status-badge status-${order.status}">${order.status}</span></div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-label">Created</div>
+            <div class="detail-value">${formatDate(order.created_at)}</div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-label">Email</div>
+            <div class="detail-value">${order.customer_email || '-'}</div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-label">Artwork ID</div>
+            <div class="detail-value mono small">${order.artwork_id}</div>
+          </div>
+          ${artworkUrl ? `
+          <div class="detail-row">
+            <div class="detail-label">Artwork</div>
+            <div class="detail-value">
+              <a href="${API_BASE}${artworkUrl}" target="_blank">ダウンロード</a>
+              <img src="${API_BASE}${artworkUrl}" class="artwork-preview" onerror="this.style.display='none'">
+            </div>
+          </div>
+          ` : ''}
+          ${shipping.name ? `
+          <div class="detail-row">
+            <div class="detail-label">配送先</div>
+            <div class="detail-value">
+              ${shipping.name}<br>
+              ${shipping.address?.line1 || ''}<br>
+              ${shipping.address?.city || ''} ${shipping.address?.postal_code || ''}<br>
+              ${shipping.address?.country || ''}
+            </div>
+          </div>
+          ` : ''}
+          ${order.pod_provider ? `
+          <div class="detail-row">
+            <div class="detail-label">POD</div>
+            <div class="detail-value">${order.pod_provider} ${order.pod_order_id ? `(${order.pod_order_id})` : ''}</div>
+          </div>
+          ` : ''}
+          ${order.last_error ? `
+          <div class="detail-row">
+            <div class="detail-label">Error</div>
+            <div class="detail-value" style="color: #ef4444;">${order.last_error}</div>
+          </div>
+          ` : ''}
+          <div style="margin-top: 20px;" class="btn-row">
+            ${order.status === 'PAID' ? `<button class="btn-primary" onclick="markSubmitted('${order.id}')">発注済みにする</button>` : ''}
+            ${order.status === 'SUBMITTED' ? `<button class="btn-primary" onclick="markShipped('${order.id}')">発送済みにする</button>` : ''}
+            <button onclick="closeOrderModal()">閉じる</button>
+          </div>
+        `;
+      } catch (err) {
+        modalContent.innerHTML = `<div class="error-msg">Connection error</div>`;
+      }
+    }
+
+    // Update order status
+    async function updateOrderStatus(orderId, status, extraData = {}) {
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/orders/${orderId}`, {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Bearer ${adminToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ status, ...extraData })
+        });
+        const data = await res.json();
+
+        if (data.ok) {
+          await loadOrders();
+          closeOrderModal();
+        } else {
+          alert(data.message || 'Failed to update');
+        }
+      } catch (err) {
+        alert('Connection error');
+      }
+    }
+
+    function markSubmitted(orderId) {
+      if (confirm('この注文を「発注済み」にしますか？')) {
+        updateOrderStatus(orderId, 'SUBMITTED', { pod_provider: 'manual' });
+      }
+    }
+
+    function markShipped(orderId) {
+      if (confirm('この注文を「発送済み」にしますか？')) {
+        updateOrderStatus(orderId, 'SHIPPED');
+      }
+    }
+
+    function closeOrderModal() {
+      orderModal.classList.add('hidden');
+    }
+
+    // Event listeners
+    closeModal.addEventListener('click', closeOrderModal);
+    orderModal.addEventListener('click', (e) => {
+      if (e.target === orderModal) closeOrderModal();
+    });
+
+    statusFilter.addEventListener('change', () => {
+      currentOffset = 0;
+      loadOrders();
+    });
+
+    refreshBtn.addEventListener('click', () => {
+      loadStats();
+      loadOrders();
+    });
+
+    prevBtn.addEventListener('click', () => {
+      currentOffset = Math.max(0, currentOffset - LIMIT);
+      loadOrders();
+    });
+
+    nextBtn.addEventListener('click', () => {
+      currentOffset += LIMIT;
+      loadOrders();
+    });
+
+    // Helpers
+    function showError(el, msg) {
+      el.textContent = msg;
+      el.classList.remove('hidden');
+    }
+
+    function formatDate(isoString) {
+      if (!isoString) return '-';
+      const d = new Date(isoString);
+      return d.toLocaleString('ja-JP', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+  </script>
+</body>
+</html>
