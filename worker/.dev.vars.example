@@ -40,15 +40,33 @@ STRIPE_WEBHOOK_SECRET=whsec_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 # ------------------------------------------------------------
 # 現状は "manual"（手動発注）で運用
 # Phase 5 で "gelato" または "printful" に変更
+#
+# 推奨: Gelato（日本語対応、アート向け、日本現地生産）
 POD_PROVIDER=manual
 
-# Gelato API Key（POD_PROVIDER=gelato の場合）
-# 取得: https://dashboard.gelato.com/ → Settings → API
+# ===== Gelato（推奨）=====
+# 取得手順:
+#   1. https://www.gelato.com/ja でアカウント作成
+#   2. ダッシュボード → 設定 → API
+#   3. 「APIキーを作成」をクリック
+#
 # POD_API_KEY=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+#
+# 商品UID例（額装ポスター）:
+#   - framed_poster_wood_black_A3_297x420_mm
+#   - framed_poster_wood_white_A4_210x297_mm
+#   - framed_poster_metal_silver_A2_420x594_mm
 
-# Printful API Key（POD_PROVIDER=printful の場合）
-# 取得: https://www.printful.com/dashboard/settings/api
+# ===== Printful（代替）=====
+# 取得手順:
+#   1. https://www.printful.com でアカウント作成
+#   2. Settings → API → Create new token
+#   3. スコープ: orders:read, orders:write を選択
+#
 # POD_API_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+#
+# 注意: Printfulは variant_id（数値）で商品を指定
+# 実際のIDはAPI（/products）で確認が必要
 
 # ------------------------------------------------------------
 # 4. 管理機能（Phase 4 - オプション）
