@@ -1,9 +1,23 @@
 # cf-data-art-print-lab
 
-Cloudflare（Pages + Workers + D1 + R2）で動く「データ→作品→購入→（将来は）額装プリント発送」までの実験用リポジトリ。
+Cloudflare（Pages + Workers + D1 + R2）で動く「データ→作品→購入→額装プリント発送」までの実験用リポジトリ。
 
-**目的は“売上”ではなく、“動く実験”を公開すること。**  
+**目的は"売上"ではなく、"動く実験"を公開すること。**
 だから最初は「ユーザーから見ると自動／裏側は手動でもOK」を前提に、最小構成でエンドツーエンドを通す。
+
+---
+
+## 進捗状況
+
+| Phase | 内容 | 状態 |
+|-------|------|------|
+| 0 | リポジトリ骨格 | ✅ Done |
+| 1 | 1時間ごとのサンプル生成 | ✅ Done |
+| 2 | 購入クリック→プレビュー生成 | ✅ Done |
+| 3 | Stripe Checkout（テスト） | ✅ Done |
+| 4 | 手動フルフィルメント | 🚧 Next |
+| 5 | Gelato自動発注 | 📋 Planned |
+| 6 | 実データ導入 | 📋 Planned |
 
 ---
 
@@ -12,24 +26,21 @@ Cloudflare（Pages + Workers + D1 + R2）で動く「データ→作品→購入
 - **1時間ごと**にサンプル作品（SVG）を自動生成し、サイトに表示
 - ユーザーが「購入」導線を押すと、**その瞬間の最新データ**で作品を生成してプレビュー表示
 - OKなら **Stripe Checkout** に飛んで決済（テストモード）
-- 決済完了Webhookを受けて注文を `PAID` に更新（発送は当面手動）
+- 決済完了Webhookを受けて注文を `PAID` に更新
 
-※ 額装プリント（POD）への自動発注はロードマップで後半。最初は手動で良い。
+**Phase 5以降**: Gelato APIで額装プリントを自動発注
 
 ---
 
-## アーキテクチャ（最小）
-
-- **Cloudflare Pages**: フロント（サンプル表示、プレビュー、購入導線）
-- **Cloudflare Workers**: API・Cron・Stripe連携・R2配信
-- **Cloudflare D1**: スナップショット／作品／注文／ポインタ管理
-- **Cloudflare R2**: 生成した作品ファイル保存（SVG / 将来PDF）
+## アーキテクチャ
 
 ```
 [Browser]
   |
   v
 [Cloudflare Pages] --- fetch ---> [Cloudflare Worker API]
+                                   |   |      |      |
+                                   |   |      |      +--> Gelato（POD）[Phase 5]
                                    |   |      |
                                    |   |      +--> Stripe（決済）
                                    |   |
@@ -37,6 +48,38 @@ Cloudflare（Pages + Workers + D1 + R2）で動く「データ→作品→購入
                                    |
                                    +--> R2（作品ファイル）
 ```
+
+| コンポーネント | 用途 |
+|---------------|------|
+| Cloudflare Pages | フロント（サンプル表示、プレビュー、購入導線） |
+| Cloudflare Workers | API・Cron・Stripe連携・R2配信 |
+| Cloudflare D1 | スナップショット／作品／注文／ポインタ管理 |
+| Cloudflare R2 | 生成した作品ファイル保存（SVG / 将来PDF） |
+| Stripe | 決済 |
+| Gelato | 額装プリント（POD）[Phase 5] |
+
+---
+
+## 必要なサービス
+
+### 必須
+
+| サービス | 登録URL | 取得するもの |
+|----------|---------|--------------|
+| **Cloudflare** | https://dash.cloudflare.com/sign-up | Workers, Pages, D1, R2 |
+| **Stripe** | https://dashboard.stripe.com/register | `sk_test_xxx`, `whsec_xxx` |
+
+### Phase 5（Gelato自動発注）
+
+| サービス | 登録URL | 取得するもの |
+|----------|---------|--------------|
+| **Gelato** | https://www.gelato.com/ja | APIキー |
+
+Gelato選定理由:
+- 🇯🇵 日本語対応（ダッシュボード・サポート）
+- 🎨 ファインアート印刷（ジクレー）対応
+- 🚚 日本現地パートナー（配送2-5日）
+- 🌏 32ヵ国140+パートナー
 
 ---
 
@@ -49,96 +92,123 @@ Cloudflare（Pages + Workers + D1 + R2）で動く「データ→作品→購入
 │  ├─ TECHNICAL_DESIGN.md         # 技術設計書
 │  └─ IMPLEMENTATION_ROADMAP.md   # 実装ロードマップ
 ├─ worker/                        # Cloudflare Workers（API + Cron）
+│  └─ src/
+│     ├─ routes/                  # APIエンドポイント
+│     ├─ pod/                     # POD連携（Gelato）
+│     ├─ db/                      # D1クエリ
+│     └─ artwork/                 # 作品生成
 └─ pages/                         # Cloudflare Pages（静的フロント）
+   └─ public/
 ```
 
 ---
 
-## 必要なもの
+## ローカル起動
 
-- Node.js 18+（推奨20+）
-- Cloudflare アカウント（Workers / Pages / D1 / R2 が使えること）
-- Stripe アカウント（テストモードでOK）
+### 1) Cloudflare リソース作成
 
----
+```bash
+# D1データベース作成
+wrangler d1 create cf_data_art_print_db
+# → 出力された database_id をメモ
 
-## ローカル起動（最短）
+# R2バケット作成
+wrangler r2 bucket create cf-data-art-print-artifacts
+```
 
-### 1) Worker
+### 2) Worker
 
 ```bash
 cd worker
+
+# 依存関係インストール
 npm i
+
+# 環境変数設定
 cp .dev.vars.example .dev.vars
-# .dev.vars を編集して最低限 APP_BASE_URL / CORS_ALLOWED_ORIGINS を埋める
+# .dev.vars を編集:
+#   - STRIPE_SECRET_KEY
+#   - STRIPE_WEBHOOK_SECRET
+
+# wrangler.toml の database_id を更新
+
+# DBマイグレーション
 npm run db:migrate:local
+
+# 起動
 npm run dev
+# → http://localhost:8787
 ```
 
-デフォルトで `http://localhost:8787` にAPIが起動。
-
-### 2) Pages（フロント）
+### 3) Pages（フロント）
 
 ```bash
 cd pages
-# 静的なのでビルド不要。ローカルは簡易サーバでOK
+
+# 設定ファイル作成
 cp public/config.example.js public/config.js
 # config.js の workerBaseUrl を http://localhost:8787 に
-npx serve public -l 8788
-```
 
-`http://localhost:8788` を開くとサンプルとプレビュー動線が確認できる。
+# 簡易サーバ起動
+npx serve public -l 8788
+# → http://localhost:8788
+```
 
 ---
 
-## デプロイ（概要）
-
-**最初のデプロイはCloudflare Dashboardでもいい。**  
-慣れたら `wrangler` で一気に揃える。
+## デプロイ
 
 ### Worker
 
-1. Cloudflareで D1 と R2 を作成
-2. `worker/wrangler.toml` の `database_id` / `bucket_name` を実値に置換
-3. 秘密情報は `wrangler secret put` で入れる
-
 ```bash
 cd worker
+
+# シークレット設定
+wrangler secret put STRIPE_SECRET_KEY
+wrangler secret put STRIPE_WEBHOOK_SECRET
+
+# DBマイグレーション（本番）
 npm run db:migrate
+
+# デプロイ
 npm run deploy
 ```
 
 ### Pages
 
-- Cloudflare Pages で GitHub リポジトリを接続して `pages/public` を公開  
-  もしくは `wrangler pages deploy` を使う（後で）。
+- Cloudflare Pages で GitHub リポジトリを接続
+- ビルド設定: なし（静的ファイル）
+- 公開ディレクトリ: `pages/public`
 
 ---
 
-## API（要点）
+## API
 
-- `GET /api/health` : 死活
-- `GET /api/sample/latest` : 最新サンプル情報
-- `POST /api/preview` : 最新データでプレビュー作品生成
-- `POST /api/checkout` : Stripe Checkout セッション作成（要Stripe設定）
-- `POST /api/webhook/stripe` : Stripe Webhook（署名検証あり）
-- `GET /art/<key>` : R2 の作品ファイル配信
+| エンドポイント | 説明 |
+|---------------|------|
+| `GET /api/health` | 死活確認 |
+| `GET /api/sample/latest` | 最新サンプル情報 |
+| `POST /api/preview` | プレビュー作品生成 |
+| `POST /api/checkout` | Stripe Checkout作成 |
+| `POST /api/webhook/stripe` | Stripe Webhook |
+| `GET /art/<key>` | 作品ファイル配信 |
+| `GET /api/admin/orders` | 注文一覧（Phase 4、要認証） |
 
 詳細は `docs/TECHNICAL_DESIGN.md` を参照。
 
 ---
 
-## 正直な注意点（ここを舐めると詰む）
+## 注意点
 
-- 「1時間ごとにサンプル」は簡単。でも「印刷用マスター（PDF/解像度/余白/色）」は一気に難しくなる。  
+- 「1時間ごとにサンプル」は簡単。でも「印刷用マスター（PDF/解像度/余白/色）」は一気に難しくなる。
   **MVPはSVGで通して、次にPDF生成に進め。**
-- StripeのWebhook署名検証を雑にすると、注文ステータスが壊れる。  
-  **このリポジトリの実装は“最小の骨格”。本番運用するなら要監査。**
-- 額装PODは仕様（サイズ／フレーム／紙／余白）で炎上しがち。  
-  **自動化は最後。最初は手動で品質を掴め。**
+- StripeのWebhook署名検証を雑にすると、注文ステータスが壊れる。
+  **このリポジトリの実装は"最小の骨格"。本番運用するなら要監査。**
+- 額装PODは仕様（サイズ／フレーム／紙／余白）で炎上しがち。
+  **Gelatoの仕様を確認してから自動化。最初は手動で品質を掴め。**
 
 ---
 
 ## ライセンス
 
-- `LICENSE` を参照（MIT）。用途に合わせて変更してOK。
+MIT - `LICENSE` を参照。

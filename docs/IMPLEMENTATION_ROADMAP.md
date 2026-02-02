@@ -4,7 +4,7 @@
 
 ---
 
-## Phase 0: リポジトリ骨格（Done / This commit）
+## Phase 0: リポジトリ骨格 ✅ Done
 
 - [x] README / docs 作成
 - [x] Workers / Pages のplaceholder
@@ -16,12 +16,12 @@
 
 ---
 
-## Phase 1: 1時間ごとのサンプル生成
+## Phase 1: 1時間ごとのサンプル生成 ✅ Done
 
-- [ ] Cron Triggerで `scheduled()` が動く
-- [ ] mockデータでSVG生成
-- [ ] R2保存 + D1 pointers更新
-- [ ] Pagesで最新サンプルが表示される
+- [x] Cron Triggerで `scheduled()` が動く
+- [x] mockデータでSVG生成
+- [x] R2保存 + D1 pointers更新
+- [x] Pagesで最新サンプルが表示される
 
 **完了条件**
 - ローカルで `curl` して最新サンプルが取れる
@@ -29,32 +29,35 @@
 
 ---
 
-## Phase 2: 購入クリック→プレビュー生成
+## Phase 2: 購入クリック→プレビュー生成 ✅ Done
 
-- [ ] `POST /api/preview` 実装
-- [ ] Snapshot保存（再現性）
-- [ ] プレビュー表示（フロント）
+- [x] `POST /api/preview` 実装
+- [x] Snapshot保存（再現性）
+- [x] プレビュー表示（フロント）
 
 **完了条件**
 - クリックで別のプレビューが生成される（少なくともIDが変わる）
 
 ---
 
-## Phase 3: Stripe Checkout（テスト）
+## Phase 3: Stripe Checkout（テスト）✅ Done
 
-- [ ] `POST /api/checkout` 実装（Checkout Session作成）
-- [ ] `POST /api/webhook/stripe` 実装（署名検証）
-- [ ] orders のステータス遷移 `DRAFT -> PAID`
+- [x] `POST /api/checkout` 実装（Checkout Session作成）
+- [x] `POST /api/webhook/stripe` 実装（署名検証）
+- [x] orders のステータス遷移 `DRAFT -> PAID`
 
 **完了条件**
 - テスト決済で `PAID` になる
 
 ---
 
-## Phase 4: 手動フルフィルメント（“自動に見える手動”）
+## Phase 4: 手動フルフィルメント（"自動に見える手動"）🚧 Next
 
-- [ ] 管理者用に「注文一覧」を見る方法を用意（ログでも可）
-- [ ] 作品マスターのダウンロード（/art/masters/...）
+- [ ] 管理者用に「注文一覧」を見る方法を用意
+  - `GET /api/admin/orders` 実装
+  - 簡易認証（Bearer token）
+- [ ] 作品マスターのダウンロード（`/art/masters/:id`）
+- [ ] 簡易管理画面 `pages/public/admin.html`
 - [ ] PODに手動発注する運用手順をdocs化
 
 **完了条件**
@@ -62,23 +65,62 @@
 
 ---
 
-## Phase 5: POD自動発注（必要なら）
+## Phase 5: Gelato自動発注 📋 Planned
 
-- [ ] Gelato / Printful 等のどれかを1社に絞る
-- [ ] 発注API実装（Queuesで非同期化推奨）
-- [ ] 注文ステータス `SUBMITTED` / `SHIPPED` を追跡
+**PODプロバイダー: Gelato（決定）**
+
+選定理由:
+- 日本語対応（ダッシュボード・サポート）
+- ファインアート印刷（ジクレー）対応
+- 日本現地パートナーで配送が速い・安い
+- 32ヵ国140+パートナーのグローバルネットワーク
+
+実装項目:
+- [ ] Gelato APIキー設定
+- [ ] 発注API実装（`worker/src/pod/gelato.ts` 使用）
+- [ ] Cloudflare Queues で非同期化（推奨）
+- [ ] 注文ステータス `SUBMITTED` / `SHIPPED` 追跡
+- [ ] Gelato Webhook受信（配送ステータス更新）
+
+商品設定:
+- 額装ポスター（木製フレーム黒/白/ナチュラル）
+- サイズ: A4, A3, A2
+- 商品UID例: `framed_poster_wood_black_A3_297x420_mm`
 
 **完了条件**
 - 決済完了から発注が自動で走る
+- 配送ステータスが自動更新される
 
 ---
 
-## Phase 6: 実データ導入
+## Phase 6: 実データ導入 📋 Planned
 
-- [ ] 睡眠/心拍のAPI連携
+- [ ] 睡眠/心拍のAPI連携（Oura, Fitbit等）
 - [ ] ローカルアップロード（R2 presigned URL）
 - [ ] Whisper文字起こし結果の取り込み（外部で生成→アップロード）
 
 **完了条件**
 - 「最新データ」がmockではなく実データになる
 
+---
+
+## 技術スタック
+
+| レイヤー | 技術 |
+|----------|------|
+| フロントエンド | Cloudflare Pages（静的HTML/CSS/JS）|
+| API | Cloudflare Workers（TypeScript）|
+| データベース | Cloudflare D1（SQLite）|
+| ストレージ | Cloudflare R2 |
+| 決済 | Stripe Checkout |
+| POD | Gelato API |
+
+---
+
+## 登録が必要なサービス
+
+| サービス | 必須 | 用途 |
+|----------|------|------|
+| Cloudflare | ✅ | Workers, Pages, D1, R2 |
+| Stripe | ✅ | 決済 |
+| Gelato | Phase 5 | 額装プリント自動発注 |

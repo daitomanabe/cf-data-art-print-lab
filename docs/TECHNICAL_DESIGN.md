@@ -8,6 +8,7 @@
 - OK → 決済（Stripe Checkout）
 - Webhookで支払い完了を検知し、注文を確定状態に更新
 - 作品ファイルはR2に保存し、URLで参照可能にする
+- 決済完了後、Gelatoに自動発注（Phase 5）
 
 ---
 
@@ -31,11 +32,13 @@
 ### 3.2 Cloudflare Workers（API + Cron）
 
 - HTTP API
-  - `GET /api/sample/latest`
-  - `POST /api/preview`
-  - `POST /api/checkout`
-  - `POST /api/webhook/stripe`
-  - `GET /art/<key>`
+  - `GET /api/health` - 死活確認
+  - `GET /api/sample/latest` - 最新サンプル取得
+  - `POST /api/preview` - プレビュー生成
+  - `POST /api/checkout` - Stripe Checkout作成
+  - `POST /api/webhook/stripe` - Stripe Webhook
+  - `GET /art/<key>` - 作品ファイル配信
+  - `GET /api/admin/orders` - 注文一覧（Phase 4、要認証）
 - Cron Trigger
   - `0 * * * *`（毎時0分、UTC）
   - `scheduled()` でサンプル生成
@@ -55,11 +58,41 @@
 - Checkout Session をWorkersから作成
 - Webhookで決済完了を確定
 
-### 3.6 POD（額装プリント）
+### 3.6 Gelato（POD - 額装プリント）
 
-- MVPでは**手動**
-- 将来、Gelato / Printful 等のAPIをWorkersから呼ぶ
-- 自動化するなら Cloudflare Queues を挟むのが安全
+**Phase 5で実装**
+
+- MVPでは**手動**発注
+- Phase 5でGelato APIによる自動発注
+
+#### Gelato選定理由
+
+| 項目 | Gelato |
+|------|--------|
+| 日本語対応 | ✅ ダッシュボード・サポート |
+| アート品質 | ✅ ジクレー印刷対応 |
+| 日本発送 | ✅ 現地パートナー（2-5日） |
+| グローバル | ✅ 32ヵ国140+パートナー |
+| API | ✅ REST API |
+
+#### Gelato API統合
+
+```
+worker/src/pod/
+├── index.ts      # 統一インターフェース
+├── gelato.ts     # Gelato APIクライアント
+└── printful.ts   # 代替（未使用）
+```
+
+#### 商品UID（額装ポスター）
+
+| サイズ | フレーム | 商品UID |
+|--------|----------|---------|
+| A4 | 木製黒 | `framed_poster_wood_black_A4_210x297_mm` |
+| A3 | 木製黒 | `framed_poster_wood_black_A3_297x420_mm` |
+| A3 | 木製白 | `framed_poster_wood_white_A3_297x420_mm` |
+| A2 | 木製黒 | `framed_poster_wood_black_A2_420x594_mm` |
+| A3 | 金属銀 | `framed_poster_metal_silver_A3_297x420_mm` |
 
 ---
 
@@ -97,6 +130,14 @@
 3. `checkout.session.completed` を受け取る
 4. metadataから orderId を特定して `PAID` に更新
 
+### 4.5 Gelato発注（Phase 5）
+
+1. 注文が `PAID` になったらQueuesにエンキュー
+2. Queue Consumer がGelato APIを呼び出し
+3. 注文ステータスを `SUBMITTED` に更新
+4. Gelato Webhookで配送ステータスを受信
+5. `SHIPPED` に更新
+
 ---
 
 ## 5. DB設計（D1）
@@ -118,6 +159,7 @@
 ### orders
 
 - 支払い状態、配送情報、POD連携IDなど
+- ステータス: `DRAFT` → `PAID` → `SUBMITTED` → `SHIPPED`
 
 ---
 
@@ -131,23 +173,56 @@
 
 ## 7. セキュリティ
 
-- Secrets:
-  - `STRIPE_SECRET_KEY`
-  - `STRIPE_WEBHOOK_SECRET`
-  - （将来）POD API key
-- CORS:
-  - `CORS_ALLOWED_ORIGINS` を環境変数で制御
-- Webhook:
-  - 署名検証必須（署名不一致は `400`）
-- Admin操作（将来）:
-  - 追加するなら Cloudflare Access / JWT 等で保護
+### Secrets（wrangler secret put）
+
+| 変数名 | 用途 |
+|--------|------|
+| `STRIPE_SECRET_KEY` | Stripe API |
+| `STRIPE_WEBHOOK_SECRET` | Stripe Webhook署名検証 |
+| `POD_API_KEY` | Gelato API（Phase 5） |
+| `ADMIN_TOKEN` | 管理API認証（Phase 4） |
+
+### CORS
+
+- `CORS_ALLOWED_ORIGINS` を環境変数で制御
+
+### Webhook
+
+- 署名検証必須（署名不一致は `400`）
+
+### Admin操作（Phase 4）
+
+- Bearer token認証
+- 将来的にCloudflare Access / JWT等で強化
 
 ---
 
 ## 8. 実装メモ（現実の落とし穴）
 
-- Workersで重いレンダリングをやると限界が早い。  
+- Workersで重いレンダリングをやると限界が早い。
   ベクター（SVG）で通すか、外部レンダリングに逃がす。
-- 額装PODの入稿仕様はサービス毎に違う。  
-  “自動化する前に” 仕様を固定してから。
+- 額装PODの入稿仕様はサービス毎に違う。
+  **Gelatoの仕様に合わせてPDF生成を実装する。**
+- 非同期処理は Cloudflare Queues を使う。
+  Webhook受信 → Queue → POD発注 の流れが安全。
 
+---
+
+## 9. 環境変数一覧
+
+### 非シークレット（wrangler.toml）
+
+| 変数名 | 説明 | 例 |
+|--------|------|-----|
+| `APP_BASE_URL` | フロントエンドURL | `https://example.pages.dev` |
+| `CORS_ALLOWED_ORIGINS` | CORS許可オリジン | `https://example.pages.dev` |
+| `POD_PROVIDER` | PODプロバイダー | `manual`, `gelato` |
+
+### シークレット（wrangler secret put）
+
+| 変数名 | 説明 | 取得元 |
+|--------|------|--------|
+| `STRIPE_SECRET_KEY` | Stripe APIキー | Stripe Dashboard |
+| `STRIPE_WEBHOOK_SECRET` | Webhook署名検証 | Stripe Webhooks |
+| `POD_API_KEY` | Gelato APIキー | Gelato Dashboard |
+| `ADMIN_TOKEN` | 管理API認証 | 任意の文字列 |
