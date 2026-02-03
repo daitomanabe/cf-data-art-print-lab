@@ -10,6 +10,7 @@
 import type { Env } from "../index";
 import { json } from "../util/http";
 import { verifyAdminToken } from "../util/auth";
+import { fulfillOrder } from "../pod/fulfillment";
 
 // Valid order statuses
 const ORDER_STATUSES = ["DRAFT", "PAID", "SUBMITTED", "SHIPPED", "CANCELED", "FAILED"] as const;
@@ -27,6 +28,7 @@ interface OrderRow {
   pod_provider: string | null;
   pod_order_id: string | null;
   last_error: string | null;
+  tracking_json: string | null;
 }
 
 interface ArtworkRow {
@@ -151,12 +153,24 @@ export async function getOrder(request: Request, env: Env, orderId: string): Pro
       }
     }
 
+    // Parse tracking JSON if present
+    let tracking = null;
+    if (order.tracking_json) {
+      try {
+        tracking = JSON.parse(order.tracking_json);
+      } catch {
+        // Ignore parse errors
+      }
+    }
+
     return json({
       ok: true,
       order: {
         ...order,
         shipping,
+        tracking,
         shipping_json: undefined, // Remove raw JSON
+        tracking_json: undefined, // Remove raw JSON
       },
       artwork: artwork || null,
       artworkUrl: artwork ? `/art/${artwork.r2_key}` : null,
@@ -271,6 +285,60 @@ export async function updateOrder(request: Request, env: Env, orderId: string): 
     });
   } catch (err) {
     console.error("updateOrder error:", err);
+    return json({ ok: false, error: "internal_error" }, 500);
+  }
+}
+
+/**
+ * POST /api/admin/orders/:id/fulfill
+ *
+ * Manually trigger POD fulfillment for an order
+ */
+export async function retryFulfillment(request: Request, env: Env, orderId: string): Promise<Response> {
+  // Verify admin token
+  const authError = verifyAdminToken(request, env.ADMIN_TOKEN);
+  if (authError) return authError;
+
+  try {
+    // Check if order exists and is in a valid state
+    const order = await env.DB
+      .prepare("SELECT id, status FROM orders WHERE id = ?1")
+      .bind(orderId)
+      .first<{ id: string; status: string }>();
+
+    if (!order) {
+      return json({ ok: false, error: "not_found", message: "Order not found" }, 404);
+    }
+
+    // Only allow retry for PAID or FAILED orders
+    if (order.status !== "PAID" && order.status !== "FAILED") {
+      return json({
+        ok: false,
+        error: "invalid_status",
+        message: `Cannot fulfill order with status ${order.status}. Only PAID or FAILED orders can be fulfilled.`,
+      }, 400);
+    }
+
+    // Reset status to PAID before retry (in case it was FAILED)
+    if (order.status === "FAILED") {
+      const now = new Date().toISOString();
+      await env.DB
+        .prepare("UPDATE orders SET status = 'PAID', last_error = NULL, updated_at = ?1 WHERE id = ?2")
+        .bind(now, orderId)
+        .run();
+    }
+
+    // Trigger fulfillment
+    const result = await fulfillOrder(env, orderId);
+
+    return json({
+      ok: result.success,
+      provider: result.provider,
+      externalOrderId: result.externalOrderId,
+      error: result.error,
+    });
+  } catch (err) {
+    console.error("retryFulfillment error:", err);
     return json({ ok: false, error: "internal_error" }, 500);
   }
 }

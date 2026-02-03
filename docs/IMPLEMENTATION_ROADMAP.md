@@ -68,7 +68,7 @@
 
 ---
 
-## Phase 5: Gelato自動発注 📋 Planned
+## Phase 5: Gelato自動発注 ✅ Done
 
 **PODプロバイダー: Gelato（決定）**
 
@@ -79,20 +79,22 @@
 - 32ヵ国140+パートナーのグローバルネットワーク
 
 実装項目:
-- [ ] Gelato APIキー設定
-- [ ] 発注API実装（`worker/src/pod/gelato.ts` 使用）
-- [ ] Cloudflare Queues で非同期化（推奨）
-- [ ] 注文ステータス `SUBMITTED` / `SHIPPED` 追跡
-- [ ] Gelato Webhook受信（配送ステータス更新）
+- [x] Gelato APIキー設定（`POD_API_KEY`）
+- [x] 発注API実装（`worker/src/pod/fulfillment.ts`）
+- [x] Stripe Webhook連携（決済完了時に自動発注）
+- [x] 注文ステータス `SUBMITTED` / `SHIPPED` 追跡
+- [x] Gelato Webhook受信（`/api/webhook/gelato`）
+- [x] 配送追跡情報の保存（`tracking_json`）
+- [x] 管理画面から手動発注/リトライ機能
 
 商品設定:
+- デフォルト: A3木製フレーム黒（`framed_poster_wood_black_A3_297x420_mm`）
 - 額装ポスター（木製フレーム黒/白/ナチュラル）
 - サイズ: A4, A3, A2
-- 商品UID例: `framed_poster_wood_black_A3_297x420_mm`
 
 **完了条件**
-- 決済完了から発注が自動で走る
-- 配送ステータスが自動更新される
+- 決済完了から発注が自動で走る ✅
+- 配送ステータスが自動更新される ✅
 
 ---
 

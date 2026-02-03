@@ -1,5 +1,6 @@
 import type { Env } from "../index";
 import { hmacSha256Hex, timingSafeEqualHex } from "../util/crypto";
+import { fulfillOrder } from "../pod/fulfillment";
 
 export async function handleStripeWebhook(request: Request, env: Env): Promise<Response> {
   const secret = env.STRIPE_WEBHOOK_SECRET;
@@ -20,16 +21,56 @@ export async function handleStripeWebhook(request: Request, env: Env): Promise<R
     return new Response("Invalid JSON", { status: 400 });
   }
 
-  // MVP: handle only checkout.session.completed
+  // Handle checkout.session.completed
   if (event.type === "checkout.session.completed") {
     const session = event.data?.object;
     const orderId = session?.metadata?.orderId;
+
     if (orderId) {
       const now = new Date().toISOString();
+
+      // Extract shipping address from Stripe session
+      const shippingDetails = session.shipping_details || session.customer_details;
+      const shippingJson = shippingDetails ? JSON.stringify({
+        name: shippingDetails.name,
+        address: shippingDetails.address,
+        phone: shippingDetails.phone,
+      }) : null;
+
+      // Update order to PAID with shipping info
       await env.DB
-        .prepare("UPDATE orders SET status = 'PAID', updated_at = ?1, customer_email = ?2 WHERE id = ?3")
-        .bind(now, session.customer_details?.email ?? null, orderId)
+        .prepare(`
+          UPDATE orders
+          SET status = 'PAID',
+              updated_at = ?1,
+              customer_email = ?2,
+              shipping_json = ?3
+          WHERE id = ?4
+        `)
+        .bind(
+          now,
+          session.customer_details?.email ?? null,
+          shippingJson,
+          orderId
+        )
         .run();
+
+      console.log(`[Stripe Webhook] Order ${orderId} marked as PAID`);
+
+      // Trigger POD fulfillment (async, non-blocking)
+      // Use waitUntil if available, otherwise just fire and forget
+      try {
+        const result = await fulfillOrder(env, orderId);
+        if (result.success) {
+          console.log(`[Stripe Webhook] Fulfillment triggered for order ${orderId}: ${result.provider}`);
+        } else {
+          console.error(`[Stripe Webhook] Fulfillment failed for order ${orderId}: ${result.error}`);
+        }
+      } catch (err) {
+        console.error(`[Stripe Webhook] Fulfillment error for order ${orderId}:`, err);
+        // Don't fail the webhook - the order is still PAID
+        // Admin can manually retry fulfillment
+      }
     }
   }
 

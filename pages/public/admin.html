@@ -273,6 +273,10 @@
           <div class="number" id="statShipped">-</div>
           <div class="label">SHIPPED</div>
         </div>
+        <div class="stat-card">
+          <div class="number" id="statFailed">-</div>
+          <div class="label">FAILED</div>
+        </div>
       </div>
 
       <!-- Orders List -->
@@ -430,6 +434,7 @@
           document.getElementById('statPaid').textContent = data.stats.byStatus?.PAID || 0;
           document.getElementById('statSubmitted').textContent = data.stats.byStatus?.SUBMITTED || 0;
           document.getElementById('statShipped').textContent = data.stats.byStatus?.SHIPPED || 0;
+          document.getElementById('statFailed').textContent = data.stats.byStatus?.FAILED || 0;
         }
       } catch (err) {
         console.error('Failed to load stats:', err);
@@ -495,7 +500,8 @@
           <td class="small dim">${formatDate(order.created_at)}</td>
           <td class="btn-row">
             <button class="btn-small" onclick="viewOrder('${order.id}')">詳細</button>
-            ${order.status === 'PAID' ? `<button class="btn-small btn-primary" onclick="markSubmitted('${order.id}')">発注済</button>` : ''}
+            ${order.status === 'PAID' ? `<button class="btn-small btn-primary" onclick="triggerFulfillment('${order.id}')">自動発注</button>` : ''}
+            ${order.status === 'FAILED' ? `<button class="btn-small btn-primary" onclick="triggerFulfillment('${order.id}')">再発注</button>` : ''}
             ${order.status === 'SUBMITTED' ? `<button class="btn-small btn-primary" onclick="markShipped('${order.id}')">発送済</button>` : ''}
           </td>
         </tr>
@@ -568,6 +574,15 @@
             <div class="detail-value">${order.pod_provider} ${order.pod_order_id ? `(${order.pod_order_id})` : ''}</div>
           </div>
           ` : ''}
+          ${order.tracking ? `
+          <div class="detail-row">
+            <div class="detail-label">追跡</div>
+            <div class="detail-value">
+              ${order.tracking.carrier || ''} ${order.tracking.trackingCode || ''}
+              ${order.tracking.trackingUrl ? `<br><a href="${order.tracking.trackingUrl}" target="_blank">追跡URL</a>` : ''}
+            </div>
+          </div>
+          ` : ''}
           ${order.last_error ? `
           <div class="detail-row">
             <div class="detail-label">Error</div>
@@ -575,7 +590,8 @@
           </div>
           ` : ''}
           <div style="margin-top: 20px;" class="btn-row">
-            ${order.status === 'PAID' ? `<button class="btn-primary" onclick="markSubmitted('${order.id}')">発注済みにする</button>` : ''}
+            ${order.status === 'PAID' ? `<button class="btn-primary" onclick="triggerFulfillment('${order.id}')">Gelato自動発注</button>` : ''}
+            ${order.status === 'FAILED' ? `<button class="btn-primary" onclick="triggerFulfillment('${order.id}')">発注リトライ</button>` : ''}
             ${order.status === 'SUBMITTED' ? `<button class="btn-primary" onclick="markShipped('${order.id}')">発送済みにする</button>` : ''}
             <button onclick="closeOrderModal()">閉じる</button>
           </div>
@@ -609,8 +625,32 @@
       }
     }
 
+    async function triggerFulfillment(orderId) {
+      if (!confirm('この注文をGelatoに自動発注しますか？')) return;
+
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/orders/${orderId}/fulfill`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${adminToken}`,
+          }
+        });
+        const data = await res.json();
+
+        if (data.ok) {
+          alert(`発注成功: ${data.provider} (${data.externalOrderId || 'manual'})`);
+          await loadOrders();
+          closeOrderModal();
+        } else {
+          alert(`発注失敗: ${data.error}`);
+        }
+      } catch (err) {
+        alert('Connection error');
+      }
+    }
+
     function markSubmitted(orderId) {
-      if (confirm('この注文を「発注済み」にしますか？')) {
+      if (confirm('この注文を「発注済み」にしますか？（手動発注用）')) {
         updateOrderStatus(orderId, 'SUBMITTED', { pod_provider: 'manual' });
       }
     }

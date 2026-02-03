@@ -4,8 +4,9 @@ import { getLatestSample, createHourlySample } from "./routes/sample";
 import { createPreview } from "./routes/preview";
 import { createCheckoutSession } from "./routes/checkout";
 import { handleStripeWebhook } from "./routes/webhook_stripe";
+import { handleGelatoWebhook } from "./routes/webhook_gelato";
 import { serveArtObject } from "./routes/art";
-import { listOrders, getOrder, updateOrder, getStats } from "./routes/admin";
+import { listOrders, getOrder, updateOrder, getStats, retryFulfillment } from "./routes/admin";
 
 export interface Env {
   DB: D1Database;
@@ -20,6 +21,7 @@ export interface Env {
   STRIPE_SECRET_KEY?: string;
   STRIPE_WEBHOOK_SECRET?: string;
   POD_API_KEY?: string;
+  GELATO_WEBHOOK_SECRET?: string;
   ADMIN_TOKEN?: string;
 }
 
@@ -58,9 +60,18 @@ export default {
       return cors(await createCheckoutSession(request, env));
     }
 
-    // Stripe Webhook (no CORS needed)
+    // =========================================
+    // Webhooks (no CORS needed)
+    // =========================================
+
+    // Stripe Webhook
     if (request.method === "POST" && url.pathname === "/api/webhook/stripe") {
       return await handleStripeWebhook(request, env);
+    }
+
+    // Gelato Webhook (Phase 5)
+    if (request.method === "POST" && url.pathname === "/api/webhook/gelato") {
+      return await handleGelatoWebhook(request, env);
     }
 
     // =========================================
@@ -87,6 +98,12 @@ export default {
       if (request.method === "PATCH") {
         return cors(await updateOrder(request, env, orderId));
       }
+    }
+
+    // Admin: Retry fulfillment
+    const fulfillMatch = url.pathname.match(/^\/api\/admin\/orders\/([a-zA-Z0-9-]+)\/fulfill$/);
+    if (fulfillMatch && request.method === "POST") {
+      return cors(await retryFulfillment(request, env, fulfillMatch[1]));
     }
 
     // =========================================
